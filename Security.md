@@ -26,20 +26,25 @@
             <version>0.11.5</version>
             <scope>runtime</scope>
         </dependency>
+
+        <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-all</artifactId>
+            <version>5.8.5</version>
+        </dependency>
 ```
 
-
+<img src="https://hasdsd-markdown.oss-cn-beijing.aliyuncs.com/img/image-20230306165743794.png"/>
 
 ### SecurityConfig
 
 ```java
-//@RequiredArgsConstructor
-//@EnableGlobalMethodSecurity(prePostEnabled = true) // 开启授权 之后可以使用@preAuthorize注解
-@Configuration
-@EnableWebSecurity
+@RequiredArgsConstructor //用 final 代替AU注解
+@EnableGlobalMethodSecurity(prePostEnabled = true) // 开启授权 之后可以使用@preAuthorize注解  并且可以省掉Config 注解
+
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
 	
-    //不行的话 去掉final 加@Au注释
+    
     private final JwtAuthenticationTokenFilter jwtAuthenticationTokenFilter;
     private final AuthenticationEntryPoint authenticationEntryPoint;
     private final AccessDeniedHandler accessDeniedHandler;
@@ -100,24 +105,40 @@ public class UserDetailServiceImpl implements UserDetailsService {
         if (Objects.isNull(user)) {
             throw new RuntimeException("用户名或密码错误");
         }
+        						//如果需要传入多个参数的集合需要使用Arraylist
         return new LoginUser(user, Collections.singletonList("test")); // todo 从数据库中获取权限信息
     }
 }
 ```
 
-### UserDetailsSerciveImpl
+### UserDetailsImpl （LoginUser）
 
 ```java
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
 public class UserDetailsImpl implements UserDetails {
 
     private User user;
+	
+    //权限的集合
+    private List<String> permissions;
 
+    public UserDetailsImpl(User user) {
+        this.user = user;
+    }
+
+    public UserDetailsImpl(User user, List<String> permissions) {
+        this.user = user;
+        this.permissions = permissions;
+    
+
+    //授权
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return null;
+        //函数式编程
+           return 		permissions.stream().
+               			map(SimpleGrantedAuthority::new).
+               			collect(Collectors.toList());
     }
 
     // 获取密码
@@ -270,5 +291,72 @@ public class HelloController{
 		return "hello;
 	}
 }
+```
+
+### 自定义用户名和密码
+
+```java
+# 编写配置文件
+spring:
+    security:
+        user:
+            name: user
+            password: 123456
+```
+
+### 自定义失败处理
+
+如果是认证过程中出现的异常会被封装成**AuthenticationException**然后调用**AuthenticationEntryPoint**对象的方法去进行异常处理
+
+如果是授权过程中出现的异常会被封装成**AccessDeniedException**然后调用**AccessDeniedHandler**对象的方法去进行异常处理
+
+```java
+@Component
+public class AuthenticationEntryPointImpl implements AuthenticationEntryPoint {
+    @Override
+    public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException authException) throws MyException {
+        //ResponseResult result = new ResponseResult(HttpStatus.UNAUTHORIZED.value(),"用户名未验证");
+        String json = JSONUtil.toJsonStr("认证失败");
+        WebUtil.renderString(response, json);
+    }
+}
+```
+
+```java
+@Component
+public class AccessDeniedHandlerImpl implements AccessDeniedHandler {
+    @Override
+    public void handle(HttpServletRequest request, HttpServletResponse response, AccessDeniedException accessDeniedException) throws MyException {
+        String json = JSONUtil.toJsonStr("权限不足");
+        WebUtil.renderString(response, json);
+    }
+}
+```
+
+### 自定义权限检验方法
+
+在SPEL表达式中使用@ex相当于获取容器中bean的名字为ex的对象，然后在调用这个对象的hasAuthority方法
+
+@preAuthorize("@ex.hasAuthority('string str')") 
+
+默认为类的名字(应该)
+
+```java
+@Component("xx")
+public class Ex {
+    public static boolean hasAuthority(String auth){
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        LoginUser loginUser = (LoginUser) authentication.getPrincipal();
+        // 我觉得可以这样写
+        Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
+        // 他的写法
+        List<String> permissions = loginUser.getPermissions();
+
+        // todo 自定义验证
+
+        return true;
+    }
+}
+
 ```
 
