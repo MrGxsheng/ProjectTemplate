@@ -209,6 +209,19 @@ public interface ConfigService {
 
 ```
 
+### datasource type
+
+```xml
+<dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>druid</artifactId>
+            <version>1.0.20</version>
+ </dependency>
+
+```
+
+
+
 ### 仍然缺少依赖的话 直接全扔进去
 
 ```xml

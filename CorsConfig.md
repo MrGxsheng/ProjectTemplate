@@ -17,6 +17,13 @@ public class CorsConfig implements WebMvcConfigurer {
 或者
 
 ```java
+import org.springframework.context.annotation.Configuration;
+
+import javax.servlet.*;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+
 @Configuration
 public class CorsConfig implements Filter {
     @Override
