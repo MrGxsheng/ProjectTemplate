@@ -65,7 +65,7 @@ export function CommWarn(message: any) {
 ### 外部调用
 
 ```js
-import { CommFail, CommSuccess } from "../components/common"
+import { CommFail, CommSuccess } from "../components/NotifyTools"
 
       CommSuccess("注册成功")
       CommFail("注册失败")
